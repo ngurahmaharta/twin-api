@@ -5,24 +5,10 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-class Trip extends Model
+class Principal extends Model
 {
     use SoftDeletes;
-
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var array
-     */
-    protected $fillable = [
-        'company_id',
-        'type',
-        'user_id',
-        'created_by',
-        'updated_by',
-        'started_at',
-        'ended_at',
-    ];
+    protected $guarded = ['id'];
 
     /**
      * The attributes that should be mutated to dates.
@@ -32,26 +18,32 @@ class Trip extends Model
     protected $dates = [
         'created_at',
         'updated_at',
+        'deleted_at'
     ];
-
-    public function destinations()
-    {
-        return $this->hasMany('App\Models\TripDestination');
-    }
 
     public function company()
     {
         return $this->belongsTo('App\Models\Company');
     }
 
-    public function team()
+    public function province()
     {
-        return $this->belongsTo('App\Models\Team');
+        return $this->belongsTo('App\Models\Province');
     }
 
-    public function driver()
+    public function district()
     {
-        return $this->belongsTo('App\Models\User', 'user_id');
+        return $this->belongsTo('App\Models\District');
+    }
+
+    public function subdistrict()
+    {
+        return $this->belongsTo('App\Models\Subdistrict');
+    }
+
+    public function village()
+    {
+        return $this->belongsTo('App\Models\Village');
     }
 
     public function creator()

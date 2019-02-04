@@ -23,6 +23,8 @@ $router->post('login', 'AuthController@login');
 $router->post('register', 'AuthController@register');
 $router->get('activate/{token}', 'AuthController@activate');
 
+$router->get('region', 'RegionController@index');
+
 $router->group(['middleware' => 'jwt.auth'], function () use ($router) {
     $router->group(['prefix' => 'admin'], function () use ($router) {
         $router->group(['prefix' => 'company'], function () use ($router) {
@@ -108,6 +110,14 @@ $router->group(['middleware' => 'jwt.auth'], function () use ($router) {
             $router->get('{teamId}', 'TeamController@show');
             $router->put('{teamId}', 'TeamController@update');
             $router->delete('{teamId}', 'TeamController@destroy');
+        });
+
+        $router->group(['prefix' => 'principal'], function () use ($router) {
+            $router->get('/', 'PrincipalController@index');
+            $router->post('/', 'PrincipalController@store');
+            $router->get('{principalId}', 'PrincipalController@show');
+            $router->put('{principalId}', 'PrincipalController@update');
+            $router->delete('{principalId}', 'PrincipalController@destroy');
         });
     });
 
