@@ -4,20 +4,20 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
-use App\Services\StoreService;
+use App\Services\ItemStockService;
 use Tymon\JWTAuth\JWTAuth;
 
 /**
- * @resource Store
+ * @resource Item
  *
- * API for store management
+ * API for item stock management
  */
-class StoreController extends Controller
+class ItemStockController extends Controller
 {
     protected $jwt;
     protected $user;
     protected $roles = [];
-    protected $storeService;
+    protected $stockService;
 
     /**
      * Create a new controller instance.
@@ -26,12 +26,12 @@ class StoreController extends Controller
      */
     public function __construct(
         JWTAuth $jwt,
-        StoreService $storeService
+        ItemStockService $stockService
     ) {
         $this->jwt = $jwt;
         $this->user = $this->jwt->user();
-        $this->storeService = $storeService;
-        $this->roles = $this->user->jobTitles[0]->roles->where('module_id', 9)->first();
+        $this->stockService = $stockService;
+        $this->roles = $this->user->jobTitles[0]->roles->where('module_id', 15)->first();
     }
 
     /**
@@ -39,16 +39,17 @@ class StoreController extends Controller
      *
      * Display a listing of the resource.
      *
+     * @param  int  $warehouseId
      * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\Response
      */
-    public function index(Request $request)
+    public function index($warehouseId, Request $request)
     {
         if (!$this->roles->list) {
             return response()->json(['error' => 'Unauthorized!'], 401);
         }
 
-        $items = $this->storeService->list($this->user->company->id, $request->has('per_page') ? $request->per_page : 5);
+        $items = $this->stockService->list($warehouseId, $request->has('per_page') ? $request->per_page : 5);
         return $items;
     }
 
@@ -57,21 +58,26 @@ class StoreController extends Controller
      *
      * Store a newly created resource in storage.
      *
+     * @param  int  $warehouseId
      * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\Response
      */
-    public function store(Request $request)
+    public function store($warehouseId, Request $request)
     {
         if (!$this->roles->create) {
             return response()->json(['error' => 'Unauthorized!'], 401);
         }
 
+        $this->validate($request, [
+            'item_code' => 'required|exists:items,code',
+            'warehouse_id' => 'required|exists:warehouses,id',
+        ]);
+
         $input = $request->all();
-        $input['company_id'] = $this->user->company->id;
         $input['created_by'] = $this->user->id;
 
-        $this->storeService->create($input);
-        return response()->json([], 201);
+        $this->stockService->update($input);
+        return response()->json([], 200);
     }
 
     /**
@@ -79,17 +85,17 @@ class StoreController extends Controller
      *
      * Display the specified resource.
      *
-     * @param  int  $id
+     * @param  int  $warehouseId
+     * @param  string  $code
      * @return \Illuminate\Http\Response
      */
-    public function show($id)
+    public function show($warehouseId, $code)
     {
         if (!$this->roles->detail) {
             return response()->json(['error' => 'Unauthorized!'], 401);
         }
 
-        $companyId = $this->user->company->id;
-        $item = $this->storeService->find($companyId, $id);
+        $item = $this->stockService->find($warehouseId, $code);
         return $item;
     }
 
@@ -98,20 +104,25 @@ class StoreController extends Controller
      *
      * Update the specified resource in storage.
      *
+     * @param  int  $warehouseId
      * @param  \Illuminate\Http\Request  $request
-     * @param  int  $id
      * @return \Illuminate\Http\Response
      */
-    public function update(Request $request, $id)
+    public function update($warehouseId, Request $request)
     {
         if (!$this->roles->update) {
             return response()->json(['error' => 'Unauthorized!'], 401);
         }
 
-        $input = $request->all();
-        $input['company_id'] = $this->user->company->id;
+        $this->validate($request, [
+            'item_code' => 'required|exists:items,code',
+            'warehouse_id' => 'required|exists:warehouses,id',
+        ]);
 
-        $this->storeService->update($input, $id);
+        $input = $request->all();
+        $input['updated_by'] = $this->user->id;
+
+        $this->stockService->update($input);
         return response()->json([]);
     }
 
@@ -120,17 +131,17 @@ class StoreController extends Controller
      *
      * Remove the specified resource from storage.
      *
-     * @param  int  $id
+     * @param  int  $warehouseId
+     * @param  string  $code
      * @return \Illuminate\Http\Response
      */
-    public function destroy($id)
+    public function destroy($warehouseId, $code)
     {
         if (!$this->roles->delete) {
             return response()->json(['error' => 'Unauthorized!'], 401);
         }
 
-        $companyId = $this->user->company->id;
-        $this->storeService->delete($companyId, $id);
+        $this->stockService->delete($warehouseId, $code);
         return response()->json([]);
     }
 }

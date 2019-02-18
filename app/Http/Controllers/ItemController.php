@@ -4,20 +4,20 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
-use App\Services\StoreService;
+use App\Services\ItemService;
 use Tymon\JWTAuth\JWTAuth;
 
 /**
- * @resource Store
+ * @resource Item
  *
- * API for store management
+ * API for item management
  */
-class StoreController extends Controller
+class ItemController extends Controller
 {
     protected $jwt;
     protected $user;
     protected $roles = [];
-    protected $storeService;
+    protected $itemService;
 
     /**
      * Create a new controller instance.
@@ -26,12 +26,12 @@ class StoreController extends Controller
      */
     public function __construct(
         JWTAuth $jwt,
-        StoreService $storeService
+        ItemService $itemService
     ) {
         $this->jwt = $jwt;
         $this->user = $this->jwt->user();
-        $this->storeService = $storeService;
-        $this->roles = $this->user->jobTitles[0]->roles->where('module_id', 9)->first();
+        $this->itemService = $itemService;
+        $this->roles = $this->user->jobTitles[0]->roles->where('module_id', 10)->first();
     }
 
     /**
@@ -48,7 +48,8 @@ class StoreController extends Controller
             return response()->json(['error' => 'Unauthorized!'], 401);
         }
 
-        $items = $this->storeService->list($this->user->company->id, $request->has('per_page') ? $request->per_page : 5);
+        $companyId = $this->user->company->id;
+        $items = $this->itemService->list($companyId, $request->has('per_page') ? $request->per_page : 5);
         return $items;
     }
 
@@ -66,11 +67,20 @@ class StoreController extends Controller
             return response()->json(['error' => 'Unauthorized!'], 401);
         }
 
+        $this->validate($request, [
+            'code' => 'required|unique:items',
+            'name' => 'required',
+            'unit' => 'required',
+            'contents' => 'required|numeric|min:0',
+            'weight' => 'required|numeric|min:0',
+            'weight_unit' => 'required',
+        ]);
+
         $input = $request->all();
         $input['company_id'] = $this->user->company->id;
         $input['created_by'] = $this->user->id;
 
-        $this->storeService->create($input);
+        $this->itemService->create($input);
         return response()->json([], 201);
     }
 
@@ -79,17 +89,17 @@ class StoreController extends Controller
      *
      * Display the specified resource.
      *
-     * @param  int  $id
+     * @param  string  $code
      * @return \Illuminate\Http\Response
      */
-    public function show($id)
+    public function show($code)
     {
         if (!$this->roles->detail) {
             return response()->json(['error' => 'Unauthorized!'], 401);
         }
 
         $companyId = $this->user->company->id;
-        $item = $this->storeService->find($companyId, $id);
+        $item = $this->itemService->find($companyId, $code);
         return $item;
     }
 
@@ -99,19 +109,29 @@ class StoreController extends Controller
      * Update the specified resource in storage.
      *
      * @param  \Illuminate\Http\Request  $request
-     * @param  int  $id
+     * @param  string  $code
      * @return \Illuminate\Http\Response
      */
-    public function update(Request $request, $id)
+    public function update(Request $request, $code)
     {
         if (!$this->roles->update) {
             return response()->json(['error' => 'Unauthorized!'], 401);
         }
 
+        $this->validate($request, [
+            'code' => 'required|unique:items,code,'.$code.',code',
+            'name' => 'required',
+            'unit' => 'required',
+            'contents' => 'required|min:0',
+            'weight' => 'required|min:0',
+            'weight_unit' => 'required',
+        ]);
+
         $input = $request->all();
         $input['company_id'] = $this->user->company->id;
+        $input['updated_by'] = $this->user->id;
 
-        $this->storeService->update($input, $id);
+        $this->itemService->update($input, $code);
         return response()->json([]);
     }
 
@@ -120,17 +140,22 @@ class StoreController extends Controller
      *
      * Remove the specified resource from storage.
      *
-     * @param  int  $id
+     * @param  string  $code
      * @return \Illuminate\Http\Response
      */
-    public function destroy($id)
+    public function destroy($code)
     {
         if (!$this->roles->delete) {
             return response()->json(['error' => 'Unauthorized!'], 401);
         }
 
-        $companyId = $this->user->company->id;
-        $this->storeService->delete($companyId, $id);
+        $data = [
+            'company_id' => $this->user->company->id,
+            'deleted_by' => $this->user->id,
+        ];
+
+        $this->itemService->update($data, $code);
+        $this->itemService->delete($this->user->company->id, $code);
         return response()->json([]);
     }
 }

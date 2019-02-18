@@ -8,7 +8,9 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class Item extends Model
 {
     use SoftDeletes;
-    protected $guarded = ['id'];
+    protected $guarded = [];
+    protected $primaryKey = 'code';
+    public $incrementing = false;
 
     /**
      * The attributes that should be mutated to dates.
@@ -24,6 +26,11 @@ class Item extends Model
     public function prices()
     {
         return $this->hasMany('App\Models\ItemPrice');
+    }
+
+    public function stocks()
+    {
+        return $this->hasMany('App\Models\ItemStock');
     }
 
     public function company()
